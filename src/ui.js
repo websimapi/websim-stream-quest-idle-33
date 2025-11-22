@@ -93,6 +93,8 @@ export class UIManager {
         
         // New: Host spectating mode
         this.spectatingId = null;
+        // New: track whether we've already applied one live update for the currently spectated user
+        this.spectateFirstUpdateSeen = false;
 
         // Elements
         this.skillsList = document.getElementById('skills-list');
@@ -321,7 +323,7 @@ export class UIManager {
         }
     }
 
-    updateState(playerData) {
+    updateState(playerData, options = {}) {
         // If spectating, only accept updates for the spectated player
         if (this.spectatingId) {
             if (!playerData || playerData.twitchId !== this.spectatingId) {
@@ -337,7 +339,7 @@ export class UIManager {
             localStorage.setItem('sq_last_inventory', JSON.stringify(playerData.inventory));
         }
 
-        updateStateImpl(this, playerData);
+        updateStateImpl(this, playerData, options);
     }
 
     startProgressLoop(taskData) {
@@ -352,6 +354,9 @@ export class UIManager {
     showPlayerProfile(playerData) {
         if (!playerData) return;
         this.spectatingId = playerData.twitchId;
+        // Reset spectate update tracking so the next live update for this user
+        // can decide whether to suppress reward toasts.
+        this.spectateFirstUpdateSeen = false;
         // When switching to spectate another user, suppress reward toasts for their existing inventory
         updateStateImpl(this, playerData, { suppressRewards: true });
         this.updateAuthUI();
@@ -365,6 +370,7 @@ export class UIManager {
     // Host-only helper: return to own view
     stopSpectating() {
         this.spectatingId = null;
+        this.spectateFirstUpdateSeen = false;
         const token = localStorage.getItem('sq_token');
         if (token) {
             this.network.syncWithToken(token);
