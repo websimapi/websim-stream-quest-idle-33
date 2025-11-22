@@ -1,75 +1,17 @@
 import { SKILLS } from './skills.js';
 import { setupHostUI } from './ui-host.js';
 import { renderSkillsList } from './ui-skills.js';
-import { renderInventory, renderItemGrid, ITEM_ICONS } from './ui-inventory.js';
+import { ITEM_ICONS } from './ui-inventory.js';
 import { initListeners as initListenersImpl } from './ui-init.js';
 import { updateState as updateStateImpl } from './ui-state.js';
 import { startProgressLoop as startProgressLoopImpl, stopProgressLoop as stopProgressLoopImpl } from './ui-progress.js';
+import { initOfflinePopupListeners, checkOfflineEarnings, showOfflinePopup } from './ui-offline.js';
+import { initChatListeners, appendChatMessage } from './ui-chat.js';
 
 const ONE_HOUR_MS = 60 * 60 * 1000; // matches server-side energy duration
 
-// Asset Preloader
-const UI_ASSETS = [
-    'logo.png',
-    'energy_icon.png',
-    'user_default_pfp.png',
-    'woodcutting_icon.png',
-    'scavenging_icon.png',
-    'fishing_icon.png'
-];
-
-const SCENE_ASSETS = [
-    'scene_wood_beginner.png',
-    'scene_wood_intermediate.png',
-    'scene_wood_advanced.png',
-    'scene_wood_expert.png',
-    'scene_wood_legendary.png',
-    'scene_scav_beginner.png',
-    'scene_scav_intermediate.png',
-    'scene_scav_advanced.png',
-    'scene_scav_expert.png',
-    'scene_scav_legendary.png',
-    'scene_fish_beginner.png',
-    'scene_fish_intermediate.png',
-    'scene_fish_advanced.png',
-    'scene_fish_expert.png',
-    'scene_fish_legendary.png'
-];
-
-export async function preloadGameAssets() {
-    const allImages = new Set();
-
-    // 1. UI Assets
-    UI_ASSETS.forEach(src => allImages.add(src));
-
-    // 2. Scene Assets
-    SCENE_ASSETS.forEach(src => allImages.add(src));
-
-    // 3. Item Icons
-    Object.values(ITEM_ICONS).forEach(src => allImages.add(src));
-
-    // 4. Skill Icons
-    Object.values(SKILLS).forEach(skill => {
-        if (skill.icon) allImages.add(skill.icon);
-    });
-
-    console.log(`[Loader] Preloading ${allImages.size} assets...`);
-
-    const promises = Array.from(allImages).map(src => {
-        return new Promise((resolve) => {
-            const img = new Image();
-            img.src = src;
-            img.onload = () => resolve(src);
-            img.onerror = () => {
-                console.warn('Failed to load asset:', src);
-                resolve(src); // Resolve anyway to not block app
-            };
-        });
-    });
-
-    await Promise.all(promises);
-    console.log(`[Loader] All assets loaded.`);
-}
+// Asset Preloader moved to ui-preload.js
+// removed preloadGameAssets (moved to ui-preload.js)
 
 export class UIManager {
     constructor(networkManager, isHost = false) {
@@ -168,92 +110,17 @@ export class UIManager {
         }
 
         this.initListeners();
-        this.initOfflinePopupListeners(); // Attach offline popup listeners
-        this.initChatListeners(); // Attach chat UI listeners
+        this.initOfflinePopupListeners(); // moved implementation to ui-offline.js
+        this.initChatListeners(); // moved implementation to ui-chat.js
         renderSkillsList(this);
         this.updateAuthUI();
     }
 
-    initOfflinePopupListeners() {
-        const closePopup = () => {
-            if (this.offlinePopup) this.offlinePopup.style.display = 'none';
-        };
+    // removed initOfflinePopupListeners (moved to ui-offline.js)
 
-        if (this.offlineCloseBtn) this.offlineCloseBtn.onclick = closePopup;
-        if (this.offlineCloseX) this.offlineCloseX.onclick = closePopup;
+    // removed checkOfflineEarnings (moved to ui-offline.js)
 
-        if (this.offlineSuppressBtn) {
-            this.offlineSuppressBtn.onclick = () => {
-                localStorage.setItem('sq_suppress_catchup', 'true');
-                closePopup();
-            };
-        }
-    }
-
-    // Check if we should show offline earnings based on previous local state
-    checkOfflineEarnings(newPlayerData) {
-        // Don't show if suppressed
-        if (localStorage.getItem('sq_suppress_catchup') === 'true') return;
-        
-        const rawLast = localStorage.getItem('sq_last_inventory');
-        if (!rawLast) {
-            // First time load or no history, just save current and return
-            if (newPlayerData && newPlayerData.inventory) {
-                localStorage.setItem('sq_last_inventory', JSON.stringify(newPlayerData.inventory));
-            }
-            return;
-        }
-
-        let lastInventory = {};
-        try {
-            lastInventory = JSON.parse(rawLast);
-        } catch (e) {
-            lastInventory = {};
-        }
-
-        const currentInventory = newPlayerData.inventory || {};
-        const diff = {};
-        let hasDiff = false;
-
-        // Calculate items gained
-        for (const [itemId, qty] of Object.entries(currentInventory)) {
-            const oldQty = lastInventory[itemId] || 0;
-            const gained = qty - oldQty;
-            if (gained > 0) {
-                diff[itemId] = gained;
-                hasDiff = true;
-            }
-        }
-
-        if (hasDiff) {
-            this.showOfflinePopup(diff, newPlayerData);
-        }
-
-        // Update local snapshot
-        localStorage.setItem('sq_last_inventory', JSON.stringify(currentInventory));
-    }
-
-    showOfflinePopup(earnings, playerData) {
-        if (!this.offlinePopup) return;
-
-        // Render items
-        renderItemGrid(this.offlineLootGrid, earnings);
-
-        // Show active skill text
-        if (this.offlineSkillInfo) {
-            let text = 'Automated Tasks';
-            if (playerData.activeTask) {
-                const task = this.getTaskDefById(playerData.activeTask.taskId);
-                text = task ? `Currently: ${task.name}` : text;
-            } else if (playerData.pausedTask) {
-                const task = this.getTaskDefById(playerData.pausedTask.taskId);
-                text = task ? `Paused: ${task.name}` : 'Idle';
-            }
-            this.offlineSkillInfo.innerText = text;
-        }
-
-        this.offlinePopup.style.display = 'flex';
-    }
+    // removed showOfflinePopup (moved to ui-offline.js)
 
     // Helper: compute available energy from player state
     computeEnergyCount(playerData) {
@@ -390,81 +257,14 @@ export class UIManager {
         }
     }
 
-    initChatListeners() {
-        if (this.chatInput && this.chatSendBtn) {
-            const sendChat = () => {
-                const text = this.chatInput.value.trim();
-                if (!text) return;
+    // removed initChatListeners (moved to ui-chat.js)
 
-                // Optimistically render own message
-                const username =
-                    (this.state && this.state.username) ||
-                    (this.network.user && (this.network.user.username || this.network.user.name)) ||
-                    'You';
-                this.appendChatMessage({
-                    username,
-                    text,
-                    self: true
-                });
-
-                this.network.sendChatMessage(text);
-                this.chatInput.value = '';
-            };
-
-            this.chatSendBtn.addEventListener('click', sendChat);
-            this.chatInput.addEventListener('keydown', (e) => {
-                if (e.key === 'Enter') {
-                    e.preventDefault();
-                    sendChat();
-                }
-            });
-        }
-
-        // Receive chat messages from network
-        this.network.onChatMessage = (data) => {
-            // Skip rendering if this message originated from this client;
-            // we already rendered it optimistically.
-            if (this.network.room && data && data.clientId && data.clientId === this.network.room.clientId) {
-                return;
-            }
-
-            const isSelf =
-                this.network.room &&
-                data &&
-                data.clientId &&
-                data.clientId === this.network.room.clientId;
-
-            this.appendChatMessage({
-                username: data.username || 'Player',
-                text: data.text || '',
-                self: !!isSelf
-            });
-        };
-    }
-
-    appendChatMessage({ username, text, self }) {
-        if (!this.chatLog || !text) return;
-
-        // Ensure bottom-aligned layout in chat view by inserting a spacer
-        if (this.hostConsoleContainer && this.hostConsoleContainer.classList.contains('chat-view')) {
-            let spacer = this.chatLog.querySelector('.chat-spacer');
-            if (!spacer) {
-                spacer = document.createElement('div');
-                spacer.className = 'chat-spacer';
-                this.chatLog.insertBefore(spacer, this.chatLog.firstChild);
-            }
-        }
-
-        const line = document.createElement('div');
-        line.className = 'chat-line' + (self ? ' self' : '');
-        const userSpan = document.createElement('span');
-        userSpan.className = 'chat-user';
-        userSpan.textContent = `${username}:`;
-        const msgSpan = document.createElement('span');
-        msgSpan.textContent = text;
-        line.appendChild(userSpan);
-        line.appendChild(msgSpan);
-        this.chatLog.appendChild(line);
-        this.chatLog.scrollTop = this.chatLog.scrollHeight;
-    }
+    // removed appendChatMessage (moved to ui-chat.js)
 }
+
+// Wire extracted methods back onto UIManager prototype
+UIManager.prototype.initOfflinePopupListeners = initOfflinePopupListeners;
+UIManager.prototype.checkOfflineEarnings = checkOfflineEarnings;
+UIManager.prototype.showOfflinePopup = showOfflinePopup;
+UIManager.prototype.initChatListeners = initChatListeners;
+UIManager.prototype.appendChatMessage = appendChatMessage;
