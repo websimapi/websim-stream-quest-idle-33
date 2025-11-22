@@ -1,0 +1,41 @@
+/* Main layout: header + sidebars + central content */
+
+main {
+    display: flex;
+    flex-grow: 1;
+    overflow-x: hidden;
+    overflow-y: auto; /* single scroll container for middle layout */
+    min-height: 0; /* allow main to shrink so the host console stays visible */
+}
+
+/* Sidebar: skills on left */
+.skills-sidebar {
+    width: 250px;
+    background: var(--bg-panel);
+    border-right: 1px solid var(--border);
+    padding: 20px;
+    overflow-y: visible;
+}
+
+/* Content Area: central pane */
+.content-area {
+    flex-grow: 1;
+    position: relative;
+    padding: 30px;
+    padding-bottom: 160px; /* extra space so content doesn't hide behind fixed console */
+    overflow-y: visible; /* let main handle scrolling to avoid nested scrollbars */
+}
+
+/* Inventory Sidebar on the right */
+.inventory-sidebar {
+    width: 385px;
+    background: var(--bg-panel);
+    border-left: 1px solid var(--border);
+    padding: 20px;
+    overflow-y: visible;
+}
+
+/* Hide default inventory h2 (tabs are used instead) */
+.inventory-sidebar h2 {
+    display: none;
+}
