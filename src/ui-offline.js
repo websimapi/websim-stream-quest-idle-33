@@ -1,8 +1,12 @@
 import { renderItemGrid } from './ui-inventory.js';
+import { SKILLS } from './skills.js'; // NEW: import skills so getTaskDefById works
 
 // Methods extracted from UIManager (ui.js)
 
-export function initOfflinePopupListeners(uiManager) {
+export function initOfflinePopupListeners() {
+    const uiManager = this;
+    if (!uiManager) return;
+
     const closePopup = () => {
         if (uiManager.offlinePopup) uiManager.offlinePopup.style.display = 'none';
     };
@@ -19,7 +23,10 @@ export function initOfflinePopupListeners(uiManager) {
 }
 
 // Check if we should show offline earnings based on previous local state
-export function checkOfflineEarnings(uiManager, newPlayerData) {
+export function checkOfflineEarnings(newPlayerData) {
+    const uiManager = this;
+    if (!uiManager) return;
+
     // Don't show if suppressed
     if (localStorage.getItem('sq_suppress_catchup') === 'true') return;
 
@@ -54,15 +61,16 @@ export function checkOfflineEarnings(uiManager, newPlayerData) {
     }
 
     if (hasDiff) {
-        showOfflinePopup(uiManager, diff, newPlayerData);
+        uiManager.showOfflinePopup(diff, newPlayerData);
     }
 
     // Update local snapshot
     localStorage.setItem('sq_last_inventory', JSON.stringify(currentInventory));
 }
 
-export function showOfflinePopup(uiManager, earnings, playerData) {
-    if (!uiManager.offlinePopup) return;
+export function showOfflinePopup(earnings, playerData) {
+    const uiManager = this;
+    if (!uiManager || !uiManager.offlinePopup) return;
 
     // Render items
     renderItemGrid(uiManager.offlineLootGrid, earnings);
