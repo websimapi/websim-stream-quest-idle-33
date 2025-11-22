@@ -5,7 +5,11 @@ import { findSkillByTaskId, findSkillByName, showSkillDetails, renderSkillsList 
 const ONE_HOUR_MS = 60 * 60 * 1000;
 
 export function updateState(uiManager, playerData, options = {}) {
-    const suppressRewards = !!options.suppressRewards;
+    // When the host is spectating another user, never show reward toasts for that user's updates
+    const isSpectatingThisPlayer =
+        !!uiManager.spectatingId && playerData && playerData.twitchId === uiManager.spectatingId;
+
+    const suppressRewards = !!options.suppressRewards || isSpectatingThisPlayer;
     const prevActiveTask = uiManager.state ? uiManager.state.activeTask : null;
     
     // Check for inventory changes to spawn reward toast
