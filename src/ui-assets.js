@@ -49,9 +49,11 @@ export async function preloadGameAssets(onProgress) {
     const total = assets.length;
     let loaded = 0;
     
-    // Concurrency Limit: 
-    // Increased to 32 to better utilize modern network multiplexing (HTTP/2)
-    const CONCURRENCY_LIMIT = 32; 
+    // Concurrency Limit:
+    // Use hardware concurrency when available, allow significantly more than 32,
+    // but keep a sane upper bound to avoid thrashing.
+    const defaultParallel = (navigator.hardwareConcurrency || 4) * 4;
+    const CONCURRENCY_LIMIT = Math.min(96, Math.max(32, defaultParallel));
 
     console.log(`[Loader] Preloading ${total} assets (concurrency: ${CONCURRENCY_LIMIT})...`);
 
