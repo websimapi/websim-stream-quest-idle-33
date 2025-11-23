@@ -28,7 +28,7 @@ const SCENE_ASSETS = [
     'scene_fish_legendary.png'
 ];
 
-export async function preloadGameAssets() {
+export async function preloadGameAssets(onProgress) {
     const allImages = new Set();
 
     // 1. UI Assets
@@ -45,20 +45,50 @@ export async function preloadGameAssets() {
         if (skill.icon) allImages.add(skill.icon);
     });
 
-    console.log(`[Loader] Preloading ${allImages.size} assets...`);
+    const assets = Array.from(allImages);
+    const total = assets.length;
+    let loaded = 0;
+    
+    // Concurrency Limit: 
+    // Browsers limit parallel connections per domain (usually 6). 
+    // We use 8 to keep the pipe full without queueing too much in the network stack.
+    const CONCURRENCY_LIMIT = 8; 
 
-    const promises = Array.from(allImages).map(src => {
-        return new Promise((resolve) => {
-            const img = new Image();
-            img.src = src;
-            img.onload = () => resolve(src);
-            img.onerror = () => {
-                console.warn('Failed to load asset:', src);
-                resolve(src); // Resolve anyway to not block app
-            };
-        });
-    });
+    console.log(`[Loader] Preloading ${total} assets (concurrency: ${CONCURRENCY_LIMIT})...`);
 
-    await Promise.all(promises);
+    // Initialize progress
+    if (onProgress) onProgress(0, total);
+
+    // Worker function: pulls from the shared index until done
+    let nextIndex = 0;
+    const worker = async () => {
+        while (nextIndex < total) {
+            const currentIndex = nextIndex++;
+            const src = assets[currentIndex];
+            
+            await new Promise((resolve) => {
+                const img = new Image();
+                img.onload = () => resolve(true);
+                img.onerror = () => {
+                    console.warn(`[Loader] Failed to load asset: ${src}`);
+                    resolve(false); // Resolve anyway to continue loading other assets
+                };
+                img.src = src;
+            });
+
+            loaded++;
+            if (onProgress) onProgress(loaded, total);
+        }
+    };
+
+    // Spawn workers
+    const workers = [];
+    const workerCount = Math.min(total, CONCURRENCY_LIMIT);
+    
+    for (let i = 0; i < workerCount; i++) {
+        workers.push(worker());
+    }
+
+    await Promise.all(workers);
     console.log(`[Loader] All assets loaded.`);
 }
