@@ -1,5 +1,3 @@
-// Chat-related methods extracted from UIManager (ui.js)
-
 export function initChatListeners(uiManager) {
     if (uiManager.chatInput && uiManager.chatSendBtn) {
         const sendChat = () => {
@@ -11,6 +9,7 @@ export function initChatListeners(uiManager) {
                 (uiManager.state && uiManager.state.username) ||
                 (uiManager.network.user && (uiManager.network.user.username || uiManager.network.user.name)) ||
                 'You';
+            
             appendChatMessage(uiManager, {
                 username,
                 text,

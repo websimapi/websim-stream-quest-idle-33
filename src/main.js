@@ -1,6 +1,5 @@
 import { NetworkManager } from './network.js';
-import { UIManager } from './ui.js';
-import { preloadGameAssets } from './ui-preload.js';
+import { UIManager, preloadGameAssets } from './ui.js';
 
 async function init() {
     const project = await window.websim.getCurrentProject();

@@ -1,17 +1,19 @@
 import { SKILLS } from './skills.js';
 import { setupHostUI } from './ui-host.js';
 import { renderSkillsList } from './ui-skills.js';
-import { ITEM_ICONS } from './ui-inventory.js';
+import { renderInventory, renderItemGrid, ITEM_ICONS } from './ui-inventory.js';
 import { initListeners as initListenersImpl } from './ui-init.js';
 import { updateState as updateStateImpl } from './ui-state.js';
 import { startProgressLoop as startProgressLoopImpl, stopProgressLoop as stopProgressLoopImpl } from './ui-progress.js';
-import { initOfflinePopupListeners, checkOfflineEarnings, showOfflinePopup } from './ui-offline.js';
+import { preloadGameAssets } from './ui-assets.js';
 import { initChatListeners, appendChatMessage } from './ui-chat.js';
+import { initOfflinePopupListeners, checkOfflineEarnings, showOfflinePopup } from './ui-offline.js';
+import { showPlayerProfile, stopSpectating } from './ui-spectate.js';
 
 const ONE_HOUR_MS = 60 * 60 * 1000; // matches server-side energy duration
 
-// Asset Preloader moved to ui-preload.js
-// removed preloadGameAssets (moved to ui-preload.js)
+// Re-export preload so main.js doesn't break
+export { preloadGameAssets };
 
 export class UIManager {
     constructor(networkManager, isHost = false) {
@@ -88,9 +90,6 @@ export class UIManager {
         this.chatLog = document.getElementById('host-console-log');
         this.hostConsoleContainer = document.getElementById('host-console-container');
 
-        // Preloads are now handled by main.js via preloadGameAssets() before this class initializes or concurrently
-        // so explicit preloading calls here are removed to avoid double work.
-
         // Ensure default PFP is used for all users
         if (this.userAvatar) {
             this.userAvatar.src = 'user_default_pfp.png';
@@ -110,17 +109,24 @@ export class UIManager {
         }
 
         this.initListeners();
-        this.initOfflinePopupListeners(); // moved implementation to ui-offline.js
-        this.initChatListeners(); // moved implementation to ui-chat.js
+        this.initOfflinePopupListeners(); // Attach offline popup listeners
+        this.initChatListeners(); // Attach chat UI listeners
         renderSkillsList(this);
         this.updateAuthUI();
     }
 
-    // removed initOfflinePopupListeners (moved to ui-offline.js)
+    initOfflinePopupListeners() {
+        initOfflinePopupListeners(this);
+    }
 
-    // removed checkOfflineEarnings (moved to ui-offline.js)
+    // Check if we should show offline earnings based on previous local state
+    checkOfflineEarnings(newPlayerData) {
+        checkOfflineEarnings(this, newPlayerData);
+    }
 
-    // removed showOfflinePopup (moved to ui-offline.js)
+    showOfflinePopup(earnings, playerData) {
+        showOfflinePopup(this, earnings, playerData);
+    }
 
     // Helper: compute available energy from player state
     computeEnergyCount(playerData) {
@@ -219,52 +225,19 @@ export class UIManager {
 
     // Host-only helper: inspect another player's profile in the UI
     showPlayerProfile(playerData) {
-        if (!playerData) return;
-        this.spectatingId = playerData.twitchId;
-        // Reset spectate update tracking so the next live update for this user
-        // can decide whether to suppress reward toasts.
-        this.spectateFirstUpdateSeen = false;
-        // When switching to spectate another user, suppress reward toasts for their existing inventory
-        updateStateImpl(this, playerData, { suppressRewards: true });
-        this.updateAuthUI();
-        
-        // Force refresh of the host menu to show "Back" button
-        if (this.isHost && typeof this.refreshHostUserMenu === 'function') {
-            this.refreshHostUserMenu();
-        }
+        showPlayerProfile(this, playerData);
     }
 
     // Host-only helper: return to own view
     stopSpectating() {
-        this.spectatingId = null;
-        this.spectateFirstUpdateSeen = false;
-        const token = localStorage.getItem('sq_token');
-        if (token) {
-            this.network.syncWithToken(token);
-        } else {
-            // Reset to guest
-            this.usernameDisplay.innerText = 'Guest';
-            this.energyCount.innerText = '0/12';
-            this.energyBarFill.style.width = '0%';
-            this.skillsList.innerHTML = '';
-            this.inventoryList.innerHTML = '';
-            this.activeTaskContainer.style.display = 'none';
-            this.updateAuthUI();
-        }
-
-        if (this.isHost && typeof this.refreshHostUserMenu === 'function') {
-            this.refreshHostUserMenu();
-        }
+        stopSpectating(this);
     }
 
-    // removed initChatListeners (moved to ui-chat.js)
+    initChatListeners() {
+        initChatListeners(this);
+    }
 
-    // removed appendChatMessage (moved to ui-chat.js)
+    appendChatMessage(args) {
+        appendChatMessage(this, args);
+    }
 }
-
-// Wire extracted methods back onto UIManager prototype
-UIManager.prototype.initOfflinePopupListeners = initOfflinePopupListeners;
-UIManager.prototype.checkOfflineEarnings = checkOfflineEarnings;
-UIManager.prototype.showOfflinePopup = showOfflinePopup;
-UIManager.prototype.initChatListeners = initChatListeners;
-UIManager.prototype.appendChatMessage = appendChatMessage;

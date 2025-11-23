@@ -1,12 +1,6 @@
 import { renderItemGrid } from './ui-inventory.js';
-import { SKILLS } from './skills.js'; // NEW: import skills so getTaskDefById works
 
-// Methods extracted from UIManager (ui.js)
-
-export function initOfflinePopupListeners() {
-    const uiManager = this;
-    if (!uiManager) return;
-
+export function initOfflinePopupListeners(uiManager) {
     const closePopup = () => {
         if (uiManager.offlinePopup) uiManager.offlinePopup.style.display = 'none';
     };
@@ -22,11 +16,7 @@ export function initOfflinePopupListeners() {
     }
 }
 
-// Check if we should show offline earnings based on previous local state
-export function checkOfflineEarnings(newPlayerData) {
-    const uiManager = this;
-    if (!uiManager) return;
-
+export function checkOfflineEarnings(uiManager, newPlayerData) {
     // Don't show if suppressed
     if (localStorage.getItem('sq_suppress_catchup') === 'true') return;
 
@@ -61,16 +51,15 @@ export function checkOfflineEarnings(newPlayerData) {
     }
 
     if (hasDiff) {
-        uiManager.showOfflinePopup(diff, newPlayerData);
+        showOfflinePopup(uiManager, diff, newPlayerData);
     }
 
     // Update local snapshot
     localStorage.setItem('sq_last_inventory', JSON.stringify(currentInventory));
 }
 
-export function showOfflinePopup(earnings, playerData) {
-    const uiManager = this;
-    if (!uiManager || !uiManager.offlinePopup) return;
+export function showOfflinePopup(uiManager, earnings, playerData) {
+    if (!uiManager.offlinePopup) return;
 
     // Render items
     renderItemGrid(uiManager.offlineLootGrid, earnings);
@@ -79,23 +68,14 @@ export function showOfflinePopup(earnings, playerData) {
     if (uiManager.offlineSkillInfo) {
         let text = 'Automated Tasks';
         if (playerData.activeTask) {
-            const task = getTaskDefById(playerData.activeTask.taskId);
+            const task = uiManager.getTaskDefById(playerData.activeTask.taskId);
             text = task ? `Currently: ${task.name}` : text;
         } else if (playerData.pausedTask) {
-            const task = getTaskDefById(playerData.pausedTask.taskId);
+            const task = uiManager.getTaskDefById(playerData.pausedTask.taskId);
             text = task ? `Paused: ${task.name}` : 'Idle';
         }
         uiManager.offlineSkillInfo.innerText = text;
     }
 
     uiManager.offlinePopup.style.display = 'flex';
-}
-
-export function getTaskDefById(taskId) {
-    if (!taskId) return null;
-    for (const skill of Object.values(SKILLS)) {
-        const t = skill.tasks.find((t) => t.id === taskId);
-        if (t) return t;
-    }
-    return null;
 }

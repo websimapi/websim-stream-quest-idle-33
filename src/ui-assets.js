@@ -28,7 +28,6 @@ const SCENE_ASSETS = [
     'scene_fish_legendary.png'
 ];
 
-// Extracted from ui.js
 export async function preloadGameAssets() {
     const allImages = new Set();
 
