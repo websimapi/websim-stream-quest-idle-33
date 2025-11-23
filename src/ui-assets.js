@@ -50,9 +50,8 @@ export async function preloadGameAssets(onProgress) {
     let loaded = 0;
     
     // Concurrency Limit: 
-    // Browsers limit parallel connections per domain (usually 6). 
-    // We use 8 to keep the pipe full without queueing too much in the network stack.
-    const CONCURRENCY_LIMIT = 8; 
+    // Increased to 32 to better utilize modern network multiplexing (HTTP/2)
+    const CONCURRENCY_LIMIT = 32; 
 
     console.log(`[Loader] Preloading ${total} assets (concurrency: ${CONCURRENCY_LIMIT})...`);
 
@@ -68,16 +67,32 @@ export async function preloadGameAssets(onProgress) {
             
             await new Promise((resolve) => {
                 const img = new Image();
-                img.onload = () => resolve(true);
+                
+                const done = () => {
+                    loaded++;
+                    if (onProgress) onProgress(loaded, total);
+                    resolve(true);
+                };
+
+                img.onload = () => {
+                    // Use img.decode() if available to prep image for rendering
+                    // This prevents UI freeze/flash when first displayed
+                    if ('decode' in img) {
+                        img.decode()
+                            .then(done)
+                            .catch(() => done());
+                    } else {
+                        done();
+                    }
+                };
+                
                 img.onerror = () => {
                     console.warn(`[Loader] Failed to load asset: ${src}`);
-                    resolve(false); // Resolve anyway to continue loading other assets
+                    done();
                 };
+                
                 img.src = src;
             });
-
-            loaded++;
-            if (onProgress) onProgress(loaded, total);
         }
     };
 
